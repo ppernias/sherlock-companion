@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Database
+*.db
+
+# Environment
+.env
+.env.local
+
+# Build
+frontend/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads (keep structure but not files)
+backend/src/uploads/images/*
+!backend/src/uploads/images/.gitkeep
+backend/src/uploads/csv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PM2
+.pm2/
+
+# Backups
+backups/
+*.tar.gz

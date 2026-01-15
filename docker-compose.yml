@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sherlock-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/app/data/sherlock.db
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - GAME_PIN=${GAME_PIN:-1895}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sherlock.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-holmes221b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - sherlock-data:/app/data
+      - sherlock-images:/app/src/uploads/images
+    networks:
+      - sherlock-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: /api
+    container_name: sherlock-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - sherlock-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  sherlock-data:
+    name: sherlock-data
+  sherlock-images:
+    name: sherlock-images
+
+networks:
+  sherlock-network:
+    name: sherlock-network
