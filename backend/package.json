@@ -1,6 +1,6 @@
 {
   "name": "sherlock-companion-backend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Backend for Sherlock Holmes Investigador Asesor Companion App",
   "main": "src/server.js",
   "scripts": {
@@ -18,6 +18,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "csv-parser": "^3.0.0",

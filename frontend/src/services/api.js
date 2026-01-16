@@ -79,4 +79,14 @@ export const generatePrompt = (descripcion, currentPrompt) =>
 export const generateImage = (prompt) =>
   api.post('/openai/generate-image', { prompt });
 
+// Backup
+export const getBackupStats = () => api.get('/backup/stats');
+export const downloadBackup = () => api.get('/backup', { responseType: 'blob' });
+export const validateBackup = (formData) => api.post('/backup/validate', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+export const restoreBackup = (formData) => api.post('/backup/restore', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+
 export default api;

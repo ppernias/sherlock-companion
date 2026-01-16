@@ -77,16 +77,25 @@ Data is stored in Docker volumes:
 - `sherlock-data`: SQLite database
 - `sherlock-images`: Uploaded character images
 
-### Backup
+### Backup (Recommended)
+
+Use the built-in backup system in **Admin Panel → Import/Export → Backup Completo**:
+1. Click "Descargar Backup ZIP"
+2. Save the ZIP file (contains all characters, images, and settings)
+
+To restore:
+1. Click "Seleccionar archivo ZIP"
+2. Choose merge (add/update) or replace (full reset) mode
+3. Click "Restaurar"
+
+### Docker Volume Backup (Advanced)
 
 ```bash
+# Backup
 docker run --rm -v sherlock-data:/data -v $(pwd):/backup alpine \
   tar czf /backup/sherlock-backup.tar.gz -C /data .
-```
 
-### Restore
-
-```bash
+# Restore
 docker run --rm -v sherlock-data:/data -v $(pwd):/backup alpine \
   tar xzf /backup/sherlock-backup.tar.gz -C /data
 ```
@@ -121,4 +130,4 @@ MIT
 
 ## Version
 
-v2.1.0
+v2.2.0

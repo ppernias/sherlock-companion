@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+const multer = require('multer');
 const authRoutes = require('./routes/auth');
 const characterRoutes = require('./routes/characters');
 const caseRoutes = require('./routes/cases');
@@ -11,6 +12,7 @@ const importExportRoutes = require('./routes/import-export');
 const uploadRoutes = require('./routes/upload');
 const settingsRoutes = require('./routes/settings');
 const openaiRoutes = require('./routes/openai');
+const backupRoutes = require('./routes/backup');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -74,6 +76,7 @@ app.use('/api', importExportRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/openai', openaiRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

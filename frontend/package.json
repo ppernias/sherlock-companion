@@ -1,6 +1,6 @@
 {
   "name": "sherlock-companion-frontend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Frontend for Sherlock Holmes Investigador Asesor Companion App",
   "private": true,
   "dependencies": {

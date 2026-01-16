@@ -59,6 +59,10 @@ import {
   PersonAdd as PersonAddIcon,
   ArrowUpward as ArrowUpIcon,
   ArrowDownward as ArrowDownIcon,
+  Backup as BackupIcon,
+  Restore as RestoreIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import {
   getCharacters,
@@ -79,6 +83,10 @@ import {
   getAdmins,
   createAdmin,
   deleteAdmin,
+  getBackupStats,
+  downloadBackup,
+  validateBackup,
+  restoreBackup,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -159,6 +167,15 @@ const AdminPanel = () => {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatedImageFile, setGeneratedImageFile] = useState('');
   const [imageDialog, setImageDialog] = useState(false);
+
+  // Backup state
+  const [backupStats, setBackupStats] = useState(null);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreFile, setRestoreFile] = useState(null);
+  const [restoreValidation, setRestoreValidation] = useState(null);
+  const [restoreMode, setRestoreMode] = useState('merge');
+  const [restoreDialog, setRestoreDialog] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   // Notifications
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -428,6 +445,82 @@ const AdminPanel = () => {
     a.click();
     window.URL.revokeObjectURL(url);
   };
+
+  // Backup functions
+  const loadBackupStats = async () => {
+    try {
+      const response = await getBackupStats();
+      setBackupStats(response.data);
+    } catch (err) {
+      console.error('Error loading backup stats:', err);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const response = await downloadBackup();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      downloadBlob(response.data, `sherlock-backup-${timestamp}.zip`);
+      showSnackbar('Backup descargado correctamente');
+    } catch (err) {
+      showSnackbar('Error al generar backup', 'error');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestoreFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setRestoreFile(file);
+    setRestoreValidation(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('backup', file);
+      const response = await validateBackup(formData);
+      setRestoreValidation(response.data);
+    } catch (err) {
+      showSnackbar(err.response?.data?.error || 'Error al validar backup', 'error');
+      setRestoreFile(null);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreFile) return;
+
+    setRestoring(true);
+    try {
+      const formData = new FormData();
+      formData.append('backup', restoreFile);
+      formData.append('mode', restoreMode);
+      const response = await restoreBackup(formData);
+
+      const { stats } = response.data;
+      showSnackbar(
+        `Restauracion completada: ${stats.inserted} nuevos, ${stats.updated} actualizados, ${stats.images_restored} imagenes`
+      );
+
+      setRestoreDialog(false);
+      setRestoreFile(null);
+      setRestoreValidation(null);
+      searchCharacters();
+      loadData();
+    } catch (err) {
+      showSnackbar(err.response?.data?.error || 'Error al restaurar backup', 'error');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  // Load backup stats when switching to import/export tab
+  useEffect(() => {
+    if (tabValue === 1) {
+      loadBackupStats();
+    }
+  }, [tabValue]);
 
   // Settings
   const handleOpenSettings = async () => {
@@ -758,14 +851,113 @@ const AdminPanel = () => {
         {/* Import/Export Tab */}
         {tabValue === 1 && (
           <Grid container spacing={3}>
+            {/* Backup Completo */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <BackupIcon /> Backup Completo
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+                    Descargar Backup
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                    Descarga un archivo ZIP con todos los personajes, imagenes y configuracion.
+                  </Typography>
+                  {backupStats && (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'background.default', borderRadius: 1 }}>
+                      <Typography variant="body2">
+                        {backupStats.total_characters} personajes, {backupStats.total_images} imagenes
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        Tamano estimado: {(backupStats.estimated_size / 1024 / 1024).toFixed(1)} MB
+                      </Typography>
+                    </Box>
+                  )}
+                  <Button
+                    variant="contained"
+                    startIcon={backupLoading ? <CircularProgress size={20} color="inherit" /> : <BackupIcon />}
+                    onClick={handleDownloadBackup}
+                    disabled={backupLoading}
+                    fullWidth
+                  >
+                    {backupLoading ? 'Generando...' : 'Descargar Backup ZIP'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+                    Restaurar Backup
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                    Restaura personajes e imagenes desde un archivo ZIP de backup.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<RestoreIcon />}
+                    fullWidth
+                  >
+                    Seleccionar archivo ZIP
+                    <input
+                      type="file"
+                      hidden
+                      accept=".zip"
+                      onChange={handleRestoreFileSelect}
+                    />
+                  </Button>
+                  {restoreValidation && (
+                    <Box sx={{ mt: 2, p: 1.5, bgcolor: 'background.default', borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
+                        <CheckCircleIcon fontSize="small" /> Backup valido
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        {restoreValidation.stats.characters} personajes, {restoreValidation.stats.images} imagenes
+                      </Typography>
+                      {restoreValidation.stats.backup_date && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Fecha: {new Date(restoreValidation.stats.backup_date).toLocaleString()}
+                        </Typography>
+                      )}
+                      <Box sx={{ mt: 2 }}>
+                        <Button
+                          variant="contained"
+                          color="warning"
+                          startIcon={<RestoreIcon />}
+                          onClick={() => setRestoreDialog(true)}
+                          fullWidth
+                        >
+                          Restaurar
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Divider */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                Import/Export CSV
+              </Typography>
+            </Grid>
+
+            {/* Importar CSV */}
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
                     Importar CSV
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                    Formato: Caso;Nombre del caso;Nombre;Oficio o filiacion;Descripcion;Prompt;image_file
+                    Formato: Caso;Nombre del caso;Nombre;Oficio;Descripcion;Prompt;image_file;Categoria;Es informante
                   </Typography>
                   <Button
                     variant="outlined"
@@ -778,10 +970,12 @@ const AdminPanel = () => {
                 </CardContent>
               </Card>
             </Grid>
+
+            {/* Exportar CSV */}
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
                     Exportar CSV
                   </Typography>
                   <Button
@@ -1043,6 +1237,76 @@ const AdminPanel = () => {
           </Button>
           <Button variant="contained" onClick={handleImport} disabled={!importFile}>
             Importar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Restore Dialog */}
+      <Dialog open={restoreDialog} onClose={() => !restoring && setRestoreDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <RestoreIcon color="warning" />
+          Restaurar Backup
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Esta accion modificara la base de datos. Asegurate de tener un backup actual antes de continuar.
+          </Alert>
+
+          {restoreValidation && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Contenido del backup:</strong>
+              </Typography>
+              <Typography variant="body2">
+                - {restoreValidation.stats.characters} personajes
+              </Typography>
+              <Typography variant="body2">
+                - {restoreValidation.stats.images} imagenes
+              </Typography>
+              {restoreValidation.stats.has_settings && (
+                <Typography variant="body2">
+                  - Configuracion incluida
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            Modo de restauracion:
+          </Typography>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <Select
+              value={restoreMode}
+              onChange={(e) => setRestoreMode(e.target.value)}
+              size="small"
+            >
+              <MenuItem value="merge">
+                Fusionar (actualiza existentes, anade nuevos)
+              </MenuItem>
+              <MenuItem value="replace">
+                Reemplazar todo (borra datos actuales)
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          {restoreMode === 'replace' && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              ATENCION: Se borraran todos los personajes actuales antes de restaurar.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestoreDialog(false)} disabled={restoring}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleRestore}
+            disabled={restoring}
+            startIcon={restoring ? <CircularProgress size={20} color="inherit" /> : <RestoreIcon />}
+          >
+            {restoring ? 'Restaurando...' : 'Confirmar Restauracion'}
           </Button>
         </DialogActions>
       </Dialog>

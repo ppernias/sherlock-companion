@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Sherlock Companion v2.1.0** is a web application for the board game "Sherlock Holmes Consulting Detective" (Sherlock Holmes Investigador Asesor). It serves as an audiovisual companion for managing and displaying game characters with their images and AI-generated content.
+**Sherlock Companion v2.2.0** is a web application for the board game "Sherlock Holmes Consulting Detective" (Sherlock Holmes Investigador Asesor). It serves as an audiovisual companion for managing and displaying game characters with their images and AI-generated content.
 
 ## Key Concepts
 
@@ -250,6 +250,12 @@ Field details:
 - `POST /api/openai/generate-prompt` - Generate character prompt using GPT-4o-mini
 - `POST /api/openai/generate-image` - Generate character image using GPT-Image-1.5
 
+### Backup/Restore
+- `GET /api/backup` - Download complete backup (ZIP with CSV + images)
+- `GET /api/backup/stats` - Get backup statistics (character count, image count, size)
+- `POST /api/backup/validate` - Validate backup ZIP before restore
+- `POST /api/backup/restore` - Restore from backup ZIP (modes: merge, replace)
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -274,16 +280,36 @@ Docker volumes are used for data persistence:
 - `sherlock-data`: SQLite database
 - `sherlock-images`: Uploaded character images
 
-To backup data:
+### Application Backup (Recommended)
+
+Use the built-in backup system in AdminPanel → Import/Export → Backup Completo:
+- Downloads a ZIP file with all characters, images, and settings
+- Can be restored via the same interface
+- Supports merge or replace modes
+
+### Docker Volume Backup (Advanced)
+
 ```bash
 docker run --rm -v sherlock-data:/data -v $(pwd):/backup alpine \
   tar czf /backup/sherlock-backup.tar.gz -C /data .
 ```
 
-To restore data:
+To restore:
 ```bash
 docker run --rm -v sherlock-data:/data -v $(pwd):/backup alpine \
   tar xzf /backup/sherlock-backup.tar.gz -C /data
+```
+
+## Backup ZIP Structure
+
+```
+sherlock-backup-YYYY-MM-DDTHH-MM-SS.zip
+├── personajes.csv      # All characters (CSV format)
+├── settings.json       # Configuration (game PIN)
+├── metadata.json       # Backup info (version, date, stats)
+└── images/             # Referenced images only
+    ├── character-*.png # Manually uploaded images
+    └── gptimg-*.png    # AI-generated images
 ```
 
 ## Database Migrations
@@ -300,6 +326,15 @@ node src/utils/migrateInformante.js
 ```
 
 ## Version History
+
+### v2.2.0
+- **Backup System**: Complete backup/restore functionality
+  - Download ZIP with all characters, images, and settings
+  - Validate backup before restore
+  - Restore modes: merge (update/add) or replace (full reset)
+- **API**: New endpoints `/api/backup`, `/api/backup/stats`, `/api/backup/validate`, `/api/backup/restore`
+- **AdminPanel**: New "Backup Completo" section in Import/Export tab
+- **Image naming**: `character-*` for uploads, `gptimg-*` for AI-generated
 
 ### v2.1.0
 - **GameMode**: Fixed character limit (increased to 500) to show all characters including Holmes and Scotland Yard
