@@ -47,7 +47,9 @@ docker-compose exec backend npm run init-db
 
 ### 5. Access the application
 
-- **Game Mode**: http://localhost:3000 (PIN: `1895`)
+- **Game Mode**: http://localhost:3000
+  - 10 PINs for progressive case access (PIN N = access to cases 1-N)
+  - Default PINs: `1895` (case 1), `221B` (case 2), `1887` (case 3), etc.
 - **Admin Panel**: http://localhost:3000/admin
   - Email: `admin@sherlock.local`
   - Password: `holmes221b`
@@ -109,11 +111,13 @@ See [CLAUDE.md](CLAUDE.md) for detailed installation instructions without Docker
 | Variable | Description | Default |
 |----------|-------------|---------|
 | JWT_SECRET | Secret key for JWT tokens | (required) |
-| GAME_PIN | PIN for game access | 1895 |
+| GAME_PIN | PIN for case 1 access | 1895 |
 | ADMIN_EMAIL | Default admin email | admin@sherlock.local |
 | ADMIN_PASSWORD | Default admin password | holmes221b |
 | OPENAI_API_KEY | OpenAI API key | (optional) |
 | FRONTEND_PORT | Frontend port | 3000 |
+
+Note: All 10 case PINs can be configured in Admin Panel → Settings.
 
 ## CSV Import Format
 
@@ -130,4 +134,4 @@ MIT
 
 ## Version
 
-v2.2.0
+v2.3.0

@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isGameAccess, setIsGameAccess] = useState(false);
+  const [maxCase, setMaxCase] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +37,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsAdmin(userData.role === 'admin');
       setIsGameAccess(userData.role === 'game' || userData.role === 'admin');
+      // For game role, maxCase comes from JWT; for admin, access to all cases
+      setMaxCase(userData.role === 'admin' ? 10 : (userData.maxCase || 10));
     } catch (error) {
       console.error('Auth verification failed:', error);
       localStorage.removeItem('token');
@@ -45,12 +48,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithPin = (token) => {
+  const loginWithPin = (token, caseLevel) => {
     localStorage.setItem('token', token);
     setIsAuthenticated(true);
     setIsGameAccess(true);
     setIsAdmin(false);
-    setUser({ role: 'game' });
+    setMaxCase(caseLevel || 10);
+    setUser({ role: 'game', maxCase: caseLevel || 10 });
   };
 
   const loginAsAdmin = (token, userData) => {
@@ -60,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
     setIsAdmin(true);
     setIsGameAccess(true);
+    setMaxCase(10); // Admin has access to all cases
   };
 
   const logout = () => {
@@ -69,6 +74,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setIsAdmin(false);
     setIsGameAccess(false);
+    setMaxCase(null);
   };
 
   const value = {
@@ -76,6 +82,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     isAdmin,
     isGameAccess,
+    maxCase,
     loading,
     loginWithPin,
     loginAsAdmin,

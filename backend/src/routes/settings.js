@@ -5,9 +5,80 @@ const { verifyToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get current PIN (admin only)
+// Get all 10 PINs (admin only)
+router.get('/pins', verifyToken, requireAdmin, (req, res) => {
+  db.all("SELECT key, value FROM settings WHERE key LIKE 'pin_caso_%' ORDER BY key", [], (err, rows) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    // Build pins object { 1: 'PIN1', 2: 'PIN2', ... }
+    const pins = {};
+    rows.forEach(row => {
+      const caseNum = parseInt(row.key.replace('pin_caso_', ''));
+      pins[caseNum] = row.value;
+    });
+
+    // Ensure all 10 PINs exist with defaults
+    const DEFAULT_PINS = {
+      1: '1895', 2: '221B', 3: '1887', 4: '1891', 5: '1894',
+      6: '1902', 7: '1903', 8: '1904', 9: '1905', 10: '1927'
+    };
+
+    for (let i = 1; i <= 10; i++) {
+      if (!pins[i]) {
+        pins[i] = DEFAULT_PINS[i];
+      }
+    }
+
+    res.json({ pins });
+  });
+});
+
+// Update one or more PINs (admin only)
+router.put('/pins', verifyToken, requireAdmin, (req, res) => {
+  const { pins } = req.body;
+
+  if (!pins || typeof pins !== 'object') {
+    return res.status(400).json({ error: 'PINs object is required' });
+  }
+
+  // Validate all PINs
+  for (const [caseNum, pin] of Object.entries(pins)) {
+    const num = parseInt(caseNum);
+    if (num < 1 || num > 10) {
+      return res.status(400).json({ error: `Invalid case number: ${caseNum}` });
+    }
+    if (!pin || pin.length < 3) {
+      return res.status(400).json({ error: `PIN for case ${caseNum} must be at least 3 characters` });
+    }
+  }
+
+  // Update PINs in database
+  const updates = Object.entries(pins).map(([caseNum, pin]) => {
+    return new Promise((resolve, reject) => {
+      const key = `pin_caso_${caseNum}`;
+      db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, pin], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
+  Promise.all(updates)
+    .then(() => {
+      res.json({ message: 'PINs updated successfully' });
+    })
+    .catch(err => {
+      console.error('Database error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    });
+});
+
+// Legacy: Get current PIN for case 1 (admin only) - backwards compatibility
 router.get('/pin', verifyToken, requireAdmin, (req, res) => {
-  db.get('SELECT value FROM settings WHERE key = ?', ['game_pin'], (err, row) => {
+  db.get('SELECT value FROM settings WHERE key = ?', ['pin_caso_1'], (err, row) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -16,15 +87,15 @@ router.get('/pin', verifyToken, requireAdmin, (req, res) => {
   });
 });
 
-// Update PIN (admin only)
+// Legacy: Update PIN for case 1 (admin only) - backwards compatibility
 router.put('/pin', verifyToken, requireAdmin, (req, res) => {
   const { pin } = req.body;
 
-  if (!pin || pin.length < 4) {
-    return res.status(400).json({ error: 'PIN must be at least 4 characters' });
+  if (!pin || pin.length < 3) {
+    return res.status(400).json({ error: 'PIN must be at least 3 characters' });
   }
 
-  db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['game_pin', pin], (err) => {
+  db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['pin_caso_1', pin], (err) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Internal server error' });

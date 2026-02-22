@@ -63,6 +63,8 @@ export const deleteImage = (filename) => api.delete(`/upload/${filename}`);
 // Settings
 export const getPin = () => api.get('/settings/pin');
 export const updatePin = (pin) => api.put('/settings/pin', { pin });
+export const getPins = () => api.get('/settings/pins');
+export const updatePins = (pins) => api.put('/settings/pins', { pins });
 export const changePassword = (currentPassword, newPassword) =>
   api.put('/settings/password', { currentPassword, newPassword });
 export const getStats = () => api.get('/settings/stats');

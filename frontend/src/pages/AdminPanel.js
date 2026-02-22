@@ -74,8 +74,8 @@ import {
   exportAll,
   exportCase,
   uploadImage,
-  getPin,
-  updatePin,
+  getPins,
+  updatePins,
   getStats,
   generatePrompt,
   generateImage,
@@ -143,9 +143,9 @@ const AdminPanel = () => {
     es_informante: false,
   });
 
-  // Settings state
-  const [currentPin, setCurrentPin] = useState('');
-  const [newPin, setNewPin] = useState('');
+  // Settings state - 10 case PINs
+  const [casePins, setCasePins] = useState({});
+  const [editedPins, setEditedPins] = useState({});
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
@@ -525,10 +525,10 @@ const AdminPanel = () => {
   // Settings
   const handleOpenSettings = async () => {
     try {
-      const [pinRes, adminsRes] = await Promise.all([getPin(), getAdmins()]);
-      setCurrentPin(pinRes.data.pin);
+      const [pinsRes, adminsRes] = await Promise.all([getPins(), getAdmins()]);
+      setCasePins(pinsRes.data.pins);
+      setEditedPins(pinsRes.data.pins);
       setAdmins(adminsRes.data);
-      setNewPin('');
       setCurrentPassword('');
       setNewPassword('');
       setNewAdminEmail('');
@@ -539,13 +539,30 @@ const AdminPanel = () => {
     }
   };
 
-  const handleSavePin = async () => {
+  const handlePinChange = (caseNum, value) => {
+    setEditedPins({ ...editedPins, [caseNum]: value });
+  };
+
+  const handleSavePins = async () => {
+    // Only save changed PINs
+    const changedPins = {};
+    for (let i = 1; i <= 10; i++) {
+      if (editedPins[i] !== casePins[i] && editedPins[i]?.length >= 3) {
+        changedPins[i] = editedPins[i];
+      }
+    }
+
+    if (Object.keys(changedPins).length === 0) {
+      showSnackbar('No hay cambios que guardar', 'info');
+      return;
+    }
+
     try {
-      await updatePin(newPin);
-      showSnackbar('PIN actualizado');
-      setNewPin('');
+      await updatePins(changedPins);
+      setCasePins({ ...casePins, ...changedPins });
+      showSnackbar(`${Object.keys(changedPins).length} PIN(s) actualizado(s)`);
     } catch (err) {
-      showSnackbar(err.response?.data?.error || 'Error al actualizar PIN', 'error');
+      showSnackbar(err.response?.data?.error || 'Error al actualizar PINs', 'error');
     }
   };
 
@@ -1312,32 +1329,43 @@ const AdminPanel = () => {
       </Dialog>
 
       {/* Settings Dialog */}
-      <Dialog open={settingsDialog} onClose={() => setSettingsDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={settingsDialog} onClose={() => setSettingsDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>Configuracion</DialogTitle>
         <DialogContent>
-          {/* PIN Section */}
+          {/* PINs Section - 10 Case PINs */}
           <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
-            PIN de acceso para jugadores
+            PINs de acceso por caso
           </Typography>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            PIN actual: <strong>{currentPin}</strong>
+            Cada PIN da acceso progresivo: el PIN del caso N permite acceder a los casos 1 a N.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Nuevo PIN"
-              value={newPin}
-              onChange={(e) => setNewPin(e.target.value)}
-              helperText="Minimo 4 caracteres"
-            />
+          <Grid container spacing={1} sx={{ mb: 2 }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((caseNum) => (
+              <Grid item xs={6} sm={4} md={2.4} key={caseNum}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={`Caso ${caseNum}`}
+                  value={editedPins[caseNum] || ''}
+                  onChange={(e) => handlePinChange(caseNum, e.target.value)}
+                  error={editedPins[caseNum]?.length > 0 && editedPins[caseNum]?.length < 3}
+                  helperText={`Acceso 1-${caseNum}`}
+                  InputProps={{
+                    sx: {
+                      bgcolor: editedPins[caseNum] !== casePins[caseNum] ? 'rgba(201, 166, 107, 0.1)' : 'transparent'
+                    }
+                  }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
             <Button
               variant="contained"
-              onClick={handleSavePin}
-              disabled={newPin.length < 4}
-              sx={{ height: 40 }}
+              onClick={handleSavePins}
+              disabled={Object.keys(editedPins).every(k => editedPins[k] === casePins[k])}
             >
-              Guardar
+              Guardar PINs
             </Button>
           </Box>
 

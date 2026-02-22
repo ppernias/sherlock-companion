@@ -28,7 +28,7 @@ const PinPage = () => {
 
     try {
       const response = await verifyPin(pin);
-      loginWithPin(response.data.token);
+      loginWithPin(response.data.token, response.data.maxCase);
       navigate('/game');
     } catch (err) {
       setError(err.response?.data?.error || 'PIN incorrecto');

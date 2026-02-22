@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Sherlock Companion v2.2.0** is a web application for the board game "Sherlock Holmes Consulting Detective" (Sherlock Holmes Investigador Asesor). It serves as an audiovisual companion for managing and displaying game characters with their images and AI-generated content.
+**Sherlock Companion v2.3.0** is a web application for the board game "Sherlock Holmes Consulting Detective" (Sherlock Holmes Investigador Asesor). It serves as an audiovisual companion for managing and displaying game characters with their images and AI-generated content.
 
 ## Key Concepts
 
@@ -161,11 +161,23 @@ curl -X POST http://localhost:3001/api/auth/login \
 ## Authentication
 
 Two access levels:
-1. **Game PIN:** Simple numeric code for search/view mode (GameMode)
+1. **Game PINs:** 10 progressive PINs for search/view mode (GameMode)
+   - PIN for case N grants access to cases 1 through N
+   - Example: PIN for case 3 allows viewing cases 1, 2, and 3
 2. **Admin:** Email/password for full management (AdminPanel - CRUD, import/export, AI generation)
 
 Default credentials:
-- Game PIN: `1895`
+- Game PINs (progressive access):
+  - Case 1: `1895` (access to case 1)
+  - Case 2: `221B` (access to cases 1-2)
+  - Case 3: `1887` (access to cases 1-3)
+  - Case 4: `1891` (access to cases 1-4)
+  - Case 5: `1894` (access to cases 1-5)
+  - Case 6: `1902` (access to cases 1-6)
+  - Case 7: `1903` (access to cases 1-7)
+  - Case 8: `1904` (access to cases 1-8)
+  - Case 9: `1905` (access to cases 1-9)
+  - Case 10: `1927` (access to all cases)
 - Admin: `admin@sherlock.local` / `holmes221b`
 
 ## Database Schema
@@ -187,7 +199,7 @@ Default credentials:
 | updated_at | DATETIME | Last update timestamp |
 
 **settings table:**
-- key, value (stores game_pin)
+- key, value (stores pin_caso_1 through pin_caso_10 for progressive access)
 
 **admins table:**
 - id, email, password_hash, created_at
@@ -238,8 +250,10 @@ Field details:
 - `GET /img/:filename` - Serve image (no extension needed)
 
 ### Settings
-- `GET /api/settings/pin` - Get game PIN (admin)
-- `PUT /api/settings/pin` - Update game PIN (admin)
+- `GET /api/settings/pins` - Get all 10 case PINs (admin)
+- `PUT /api/settings/pins` - Update case PINs (admin, body: { pins: { 1: "PIN1", 2: "PIN2", ... } })
+- `GET /api/settings/pin` - Get case 1 PIN (admin, legacy)
+- `PUT /api/settings/pin` - Update case 1 PIN (admin, legacy)
 - `PUT /api/settings/password` - Change admin password
 - `GET /api/settings/stats` - Get statistics (admin)
 - `GET /api/settings/admins` - List admins (admin)
@@ -317,15 +331,29 @@ sherlock-backup-YYYY-MM-DDTHH-MM-SS.zip
 Migration scripts are located in `backend/src/utils/`:
 - `migrateCategoria.js` - Adds `categoria` field
 - `migrateInformante.js` - Adds `es_informante` field
+- `migratePins.js` - Converts single game_pin to 10 case-specific PINs
 
-Run migrations manually if upgrading from v1.x:
+Run migrations manually if upgrading:
 ```bash
 cd backend
+# From v1.x:
 node src/utils/migrateCategoria.js
 node src/utils/migrateInformante.js
+# From v2.2.0 or earlier:
+node src/utils/migratePins.js
 ```
 
 ## Version History
+
+### v2.3.0
+- **Progressive PIN System**: 10 case-specific PINs for progressive access
+  - Each PIN grants access to cases 1 through N (PIN for case 5 = access to cases 1-5)
+  - Default PINs themed around Sherlock Holmes dates (1895, 221B, 1887, etc.)
+  - All 10 PINs configurable in Admin Settings
+- **GameMode**: Shows access level indicator (e.g., "Casos 1-5")
+- **GameMode**: Filters characters and cases based on access level
+- **API**: New endpoints `GET/PUT /api/settings/pins` for managing all 10 PINs
+- **Migration**: `migratePins.js` to convert existing single PIN to 10 PINs
 
 ### v2.2.0
 - **Backup System**: Complete backup/restore functionality

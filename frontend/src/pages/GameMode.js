@@ -50,12 +50,12 @@ const GameMode = () => {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, maxCase } = useAuth();
 
-  // Load cases on mount
+  // Load cases on mount and when maxCase changes
   useEffect(() => {
     loadCases();
-  }, []);
+  }, [maxCase]);
 
   // Search with debounce
   useEffect(() => {
@@ -72,7 +72,12 @@ const GameMode = () => {
   const loadCases = async () => {
     try {
       const response = await getCases();
-      setCases(response.data);
+      // Filter cases to only show those within maxCase access level
+      const accessibleCases = response.data.filter(c => {
+        const caseNum = parseInt(c.caso);
+        return caseNum <= (maxCase || 10);
+      });
+      setCases(accessibleCases);
     } catch (err) {
       console.error('Error loading cases:', err);
     }
@@ -86,10 +91,23 @@ const GameMode = () => {
       if (searchTerm) params.search = searchTerm;
       if (selectedCase) params.caso = selectedCase;
       const response = await getCharacters(params);
-      // Filtrar categorías ocultas (solo visibles para admin)
-      const visibleCharacters = response.data.filter(
-        c => !CATEGORIAS_OCULTAS.includes(c.categoria)
-      );
+      // Filtrar por nivel de acceso y categorías ocultas
+      const visibleCharacters = response.data.filter(c => {
+        // Excluir categorías ocultas
+        if (CATEGORIAS_OCULTAS.includes(c.categoria)) return false;
+
+        // Global characters (*) are always visible
+        if (c.casos === '*') return true;
+
+        // For case-specific characters, check if ALL their cases are within maxCase
+        if (c.casos) {
+          const caseNumbers = c.casos.split(',').map(n => parseInt(n.trim()));
+          // Only show if at least one case is accessible
+          return caseNumbers.some(caseNum => caseNum <= (maxCase || 10));
+        }
+
+        return false; // Unassigned characters not visible in game mode
+      });
       setCharacters(visibleCharacters);
     } catch (err) {
       setError('Error al buscar personajes');
@@ -136,6 +154,13 @@ const GameMode = () => {
           <Typography variant="h6" sx={{ flexGrow: 1, color: 'primary.main' }}>
             Sherlock Companion
           </Typography>
+          <Chip
+            label={maxCase === 10 ? 'Todos los casos' : `Casos 1-${maxCase}`}
+            size="small"
+            color="primary"
+            variant="outlined"
+            sx={{ mr: 2 }}
+          />
           <IconButton color="primary" onClick={handleLogout} title="Salir">
             <LogoutIcon />
           </IconButton>

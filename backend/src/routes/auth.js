@@ -6,7 +6,8 @@ require('dotenv').config();
 
 const router = express.Router();
 
-// Verify game PIN
+// Verify game PIN - Progressive access system
+// PIN for case N grants access to cases 1 through N
 router.post('/pin', (req, res) => {
   const { pin } = req.body;
 
@@ -14,26 +15,39 @@ router.post('/pin', (req, res) => {
     return res.status(400).json({ error: 'PIN is required' });
   }
 
-  db.get('SELECT value FROM settings WHERE key = ?', ['game_pin'], (err, row) => {
+  // Get all 10 PINs from database
+  db.all("SELECT key, value FROM settings WHERE key LIKE 'pin_caso_%'", [], (err, rows) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
 
-    const storedPin = row ? row.value : process.env.GAME_PIN || '1895';
+    // Build a map of PIN -> case number
+    const pinMap = {};
+    rows.forEach(row => {
+      const caseNum = parseInt(row.key.replace('pin_caso_', ''));
+      pinMap[row.value] = caseNum;
+    });
 
-    if (pin !== storedPin) {
+    // Check if the provided PIN matches any case PIN
+    const matchedCase = pinMap[pin];
+
+    if (!matchedCase) {
       return res.status(401).json({ error: 'Invalid PIN' });
     }
 
-    // Generate JWT token for game access
+    // Generate JWT token with maxCase (access to cases 1 through maxCase)
     const token = jwt.sign(
-      { role: 'game' },
+      { role: 'game', maxCase: matchedCase },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.json({ token, message: 'PIN verified successfully' });
+    res.json({
+      token,
+      maxCase: matchedCase,
+      message: `PIN verified - Access to cases 1-${matchedCase}`
+    });
   });
 });
 

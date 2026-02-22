@@ -58,12 +58,32 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_characters_nombre ON characters(nombre)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_characters_oficio ON characters(oficio)`);
 
-  // Insert default settings
-  const gamePin = process.env.GAME_PIN || '1895';
-  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('game_pin', ?)`, [gamePin], (err) => {
-    if (err) console.error('Error setting game PIN:', err);
-    else console.log(`Game PIN set to: ${gamePin}`);
-  });
+  // Insert default settings - 10 PINs for progressive case access
+  const DEFAULT_PINS = {
+    pin_caso_1: process.env.GAME_PIN || '1895',
+    pin_caso_2: '221B',
+    pin_caso_3: '1887',
+    pin_caso_4: '1891',
+    pin_caso_5: '1894',
+    pin_caso_6: '1902',
+    pin_caso_7: '1903',
+    pin_caso_8: '1904',
+    pin_caso_9: '1905',
+    pin_caso_10: '1927',
+  };
+
+  // Insert all 10 PINs
+  for (let i = 1; i <= 10; i++) {
+    const key = `pin_caso_${i}`;
+    const value = DEFAULT_PINS[key];
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`, [key, value], (err) => {
+      if (err) console.error(`Error setting ${key}:`, err);
+      else console.log(`${key} set to: ${value}`);
+    });
+  }
+
+  // Keep legacy game_pin for backwards compatibility
+  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('game_pin', ?)`, [DEFAULT_PINS.pin_caso_1]);
 
   // Create default admin user if not exists
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@sherlock.local';
@@ -99,7 +119,10 @@ db.serialize(() => {
 
           console.log('\nDatabase initialization complete!');
           console.log('-----------------------------------');
-          console.log(`Game PIN: ${gamePin}`);
+          console.log('Game PINs (progressive access):');
+          for (let i = 1; i <= 10; i++) {
+            console.log(`  Case ${i}: ${DEFAULT_PINS[`pin_caso_${i}`]} (access to cases 1-${i})`);
+          }
           console.log(`Admin email: ${adminEmail}`);
           console.log(`Admin password: ${adminPassword}`);
           console.log('-----------------------------------');
