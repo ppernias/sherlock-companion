@@ -38,7 +38,7 @@ import { getCharacters, getCases } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 // Categorías ocultas para jugadores (solo visibles en admin)
-const CATEGORIAS_OCULTAS = ['Jugadores', 'Sin categoría'];
+const CATEGORIAS_OCULTAS = ['Jugadores'];
 
 const GameMode = () => {
   const [characters, setCharacters] = useState([]);

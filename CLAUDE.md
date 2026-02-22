@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Categories
 All characters can have a category (Legal, Prensa, Medicina, Servicios, etc.) regardless of their case assignment. Categories help organize characters for easier searching.
 
-Hidden categories (admin only): `Jugadores`, `Sin categoría`
+Hidden categories (admin only): `Jugadores`
 
 ## Architecture
 
